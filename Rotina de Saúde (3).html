@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rotina & Saúde</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rotina">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        orange: {
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        button, label {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        /* Ajuste para inputs de texto e hora abrirem teclado no mobile */
+        input[type="time"], input[type="text"], input[type="number"] {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(234, 88, 12, 0.4);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-white text-black dark:bg-black dark:text-white min-h-screen flex flex-col font-sans antialiased transition-colors duration-200">
+
+    <div class="w-full max-w-md mx-auto flex flex-col min-h-screen px-4 py-6 justify-between">
+        
+        <!-- Cabeçalho -->
+        <header class="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight">Rotina Diária</h1>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5" id="date-display">Carregando data...</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button id="notif-toggle" onclick="requestNotificationPermission()" aria-label="Notificações" class="p-2.5 rounded-full border border-neutral-200 dark:border-neutral-800 hover:border-orange-500 dark:hover:border-orange-500 transition-colors flex items-center justify-center text-neutral-700 dark:text-neutral-300">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                </button>
+                <button id="theme-toggle" aria-label="Alternar Tema" class="p-2.5 rounded-full border border-neutral-200 dark:border-neutral-800 hover:border-orange-500 dark:hover:border-orange-500 transition-colors flex items-center justify-center text-neutral-700 dark:text-neutral-300">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-orange-500"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-neutral-700"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 space-y-6 my-4 overflow-y-auto pr-0.5">
+            
+            <!-- MONITOR DE ÁGUA -->
+            <section class="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-sm space-y-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <div class="p-2 bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-500 rounded-xl">
+                            <i data-lucide="droplet" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-base">Consumo de Água</h2>
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400">Meta diária recomendada</p>
+                        </div>
+                    </div>
+                    <button onclick="openWaterHistoryModal()" class="text-neutral-400 hover:text-orange-600 dark:hover:text-orange-500 p-2 rounded-xl transition-colors">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Contador Principal -->
+                <div class="flex items-center justify-between py-2 px-2 bg-white dark:bg-neutral-950 rounded-xl border border-neutral-200 dark:border-neutral-800">
+                    <button onclick="changeWater(-1)" class="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 flex items-center justify-center text-xl font-bold transition-all active:scale-95 text-neutral-700 dark:text-neutral-300">
+                        -
+                    </button>
+                    
+                    <div class="text-center">
+                        <span id="water-glasses-count" class="text-3xl font-extrabold text-orange-600 dark:text-orange-500">0</span>
+                        <span class="text-xs font-semibold block text-neutral-500 dark:text-neutral-400">copos hoje</span>
+                        <span id="water-total-ml" class="text-xs text-neutral-400 dark:text-neutral-600 font-mono">0 ml</span>
+                    </div>
+
+                    <button onclick="changeWater(1)" class="w-12 h-12 rounded-xl bg-orange-600 hover:bg-orange-700 active:bg-orange-700 text-white flex items-center justify-center text-xl font-bold transition-all active:scale-95 shadow-sm">
+                        +
+                    </button>
+                </div>
+
+                <!-- Configuração do Copo -->
+                <div class="flex justify-between items-center pt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    <span>Tamanho do copo: <strong id="glass-size-display" class="text-black dark:text-white">400 ml</strong></span>
+                    <button onclick="openGlassConfigModal()" class="text-orange-600 dark:text-orange-500 font-semibold hover:underline">
+                        Alterar tamanho
+                    </button>
+                </div>
+            </section>
+
+            <!-- REMÉDIOS E SUPLEMENTOS -->
+            <section class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-bold text-base flex items-center gap-2">
+                        <i data-lucide="pill" class="w-5 h-5 text-orange-600 dark:text-orange-500"></i>
+                        Remédios & Suplementos
+                    </h2>
+                    <button onclick="openAddMedsModal()" class="bg-orange-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 hover:bg-orange-700 transition-all shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar
+                    </button>
+                </div>
+
+                <!-- Lista de Remédios -->
+                <div id="meds-list" class="space-y-3"></div>
+
+                <!-- Estado Vazio -->
+                <div id="empty-meds" class="hidden flex-col items-center justify-center py-8 text-center border border-dashed border-neutral-300 dark:border-neutral-800 rounded-2xl">
+                    <i data-lucide="heart-pulse" class="w-8 h-8 text-neutral-400 mb-2"></i>
+                    <p class="text-sm font-medium text-neutral-500">Nenhum remédio cadastrado</p>
+                    <p class="text-xs text-neutral-400 mt-0.5">Clique em Adicionar para montar sua rotina.</p>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Rodapé -->
+        <footer class="pt-3 border-t border-neutral-200 dark:border-neutral-800 flex justify-between items-center text-xs text-neutral-400 dark:text-neutral-600">
+            <span>Rotina Diária & Saúde</span>
+            <span>Estilo Laranja & Dark/Light</span>
+        </footer>
+
+    </div>
+
+    <!-- MODAL 1: Configurar Tamanho do Copo -->
+    <div id="modal-glass" class="modal-backdrop fixed inset-0 z-50 hidden flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeModalOnBackdrop(event, 'modal-glass')">
+        <div class="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+            <h3 class="text-base font-bold">Tamanho do Copo de Água</h3>
+            <div>
+                <label class="text-xs text-neutral-500 mb-1 block">Volume em ml:</label>
+                <input type="number" id="input-glass-size" class="w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded-xl p-3 text-sm focus:outline-none focus:border-orange-500" placeholder="Ex: 250, 400, 500">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeModal('modal-glass')" class="px-4 py-2 text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white">Cancelar</button>
+                <button onclick="saveGlassSize()" class="px-4 py-2 text-xs font-medium bg-orange-600 text-white rounded-xl hover:bg-orange-700">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Histórico/Calendário de Água -->
+    <div id="modal-water-history" class="modal-backdrop fixed inset-0 z-50 hidden flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeModalOnBackdrop(event, 'modal-water-history')">
+        <div class="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800">
+                <h3 class="text-base font-bold flex items-center gap-2">
+                    <i data-lucide="history" class="w-5 h-5 text-orange-500"></i> Histórico de Água
+                </h3>
+                <button onclick="closeModal('modal-water-history')" class="text-neutral-400 hover:text-black dark:hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-neutral-500">Toque em qualquer dia para editar a quantidade consumida:</p>
+            
+            <div id="water-history-list" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Adicionar/Editar Remédio -->
+    <div id="modal-med" class="modal-backdrop fixed inset-0 z-50 hidden flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="closeModalOnBackdrop(event, 'modal-med')">
+        <div class="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800">
+                <h3 id="med-modal-title" class="text-base font-bold">Adicionar Lembrete</h3>
+                <button type="button" onclick="closeModal('modal-med')" class="text-neutral-400 hover:text-black dark:hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="med-form" class="space-y-3" onsubmit="saveMed(event)">
+                <div>
+                    <label class="text-xs text-neutral-500 mb-1 block">Nome do Remédio ou Suplemento:</label>
+                    <input type="text" id="med-name" required class="w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded-xl p-3 text-sm focus:outline-none focus:border-orange-500 text-black dark:text-white" placeholder="Ex: Creatina, Vitamina C, Dipirona">
+                </div>
+                
+                <!-- Novo Seletor de Horário Visual Sem Necessidade de Teclado -->
+                <div>
+                    <label class="text-xs text-neutral-500 mb-1 block">Horário do Lembrete:</label>
+                    <div class="flex gap-2 items-center">
+                        <select id="med-hour" class="flex-1 bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded-xl p-3 text-sm font-semibold text-black dark:text-white focus:outline-none focus:border-orange-500">
+                            <!-- Horas geradas via JS -->
+                        </select>
+                        <span class="font-bold text-neutral-400">:</span>
+                        <select id="med-minute" class="flex-1 bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded-xl p-3 text-sm font-semibold text-black dark:text-white focus:outline-none focus:border-orange-500">
+                            <!-- Minutos gerados via JS -->
+                        </select>
+                    </div>
+
+                    <!-- Botões de Horários Rápidos -->
+                    <div class="flex gap-1.5 mt-2 overflow-x-auto pb-1">
+                        <button type="button" onclick="setQuickTime('08:00')" class="px-2.5 py-1 text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-orange-500 hover:text-white rounded-lg transition-colors">08:00</button>
+                        <button type="button" onclick="setQuickTime('12:00')" class="px-2.5 py-1 text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-orange-500 hover:text-white rounded-lg transition-colors">12:00</button>
+                        <button type="button" onclick="setQuickTime('18:00')" class="px-2.5 py-1 text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-orange-500 hover:text-white rounded-lg transition-colors">18:00</button>
+                        <button type="button" onclick="setQuickTime('22:00')" class="px-2.5 py-1 text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-orange-500 hover:text-white rounded-lg transition-colors">22:00</button>
+                    </div>
+                </div>
+                
+                <div id="modal-med-actions" class="flex justify-between items-center pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                    <button type="button" id="btn-delete-med" onclick="deleteCurrentEditingMed()" class="hidden text-xs font-semibold text-red-500 hover:text-red-700 flex items-center gap-1 py-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
+                    </button>
+                    <div class="flex justify-end gap-2 ml-auto">
+                        <button type="button" onclick="closeModal('modal-med')" class="px-4 py-2 text-xs font-medium text-neutral-500 hover:text-black dark:hover:text-white">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-medium bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors">Salvar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Estado da Aplicação ---
+        let glassSize = parseInt(localStorage.getItem('glass_size')) || 400;
+        let waterData = JSON.parse(localStorage.getItem('water_data')) || {}; // formato: {"YYYY-MM-DD": count}
+        let meds = JSON.parse(localStorage.getItem('meds_data')) || [
+            { id: '1', name: 'Creatina 5g', time: '08:00', days: { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true } },
+            { id: '2', name: 'Vitamina C', time: '12:00', days: { 1: true, 3: true, 5: true } }
+        ];
+
+        let editingMedId = null;
+
+        // --- Data de Hoje ---
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const options = { weekday: 'long', day: 'numeric', month: 'short' };
+            const today = new Date().toLocaleDateString('pt-BR', options);
+            document.getElementById('date-display').textContent = today.charAt(0).toUpperCase() + today.slice(1);
+
+            initTimeSelectors();
+            initTheme();
+            renderWater();
+            renderMeds();
+            lucide.createIcons();
+            startNotificationChecker();
+        });
+
+        // Preenche as opções de hora e minutos visualmente
+        function initTimeSelectors() {
+            const hourSelect = document.getElementById('med-hour');
+            const minSelect = document.getElementById('med-minute');
+            
+            hourSelect.innerHTML = '';
+            minSelect.innerHTML = '';
+
+            for (let h = 0; h < 24; h++) {
+                const val = String(h).padStart(2, '0');
+                hourSelect.innerHTML += `<option value="${val}">${val}h</option>`;
+            }
+
+            for (let m = 0; m < 60; m += 5) {
+                const val = String(m).padStart(2, '0');
+                minSelect.innerHTML += `<option value="${val}">${val} min</option>`;
+            }
+        }
+
+        function setQuickTime(timeStr) {
+            const [h, m] = timeStr.split(':');
+            document.getElementById('med-hour').value = h;
+            document.getElementById('med-minute').value = m;
+        }
+
+        // --- Tema (Dark/Light) ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+
+        // --- Lógica de Modais (Fechar clicando fora) ---
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function closeModalOnBackdrop(event, id) {
+            if (event.target.classList.contains('modal-backdrop')) {
+                closeModal(id);
+            }
+        }
+
+        // --- Lógica de Água ---
+        function renderWater() {
+            const count = waterData[todayStr] || 0;
+            document.getElementById('water-glasses-count').textContent = count;
+            document.getElementById('water-total-ml').textContent = `${count * glassSize} ml`;
+            document.getElementById('glass-size-display').textContent = `${glassSize} ml`;
+            localStorage.setItem('water_data', JSON.stringify(waterData));
+            localStorage.setItem('glass_size', glassSize);
+        }
+
+        function changeWater(delta) {
+            let current = waterData[todayStr] || 0;
+            current = Math.max(0, current + delta);
+            waterData[todayStr] = current;
+            renderWater();
+        }
+
+        function openGlassConfigModal() {
+            document.getElementById('input-glass-size').value = glassSize;
+            openModal('modal-glass');
+        }
+
+        function saveGlassSize() {
+            const val = parseInt(document.getElementById('input-glass-size').value);
+            if (val && val > 0) {
+                glassSize = val;
+                renderWater();
+                closeModal('modal-glass');
+            }
+        }
+
+        function openWaterHistoryModal() {
+            const container = document.getElementById('water-history-list');
+            container.innerHTML = '';
+
+            // Mostrar últimos 7 dias
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateKey = d.toISOString().split('T')[0];
+                const dateFormatted = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', weekday: 'short' });
+                const count = waterData[dateKey] || 0;
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3 rounded-xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-sm';
+                item.innerHTML = `
+                    <span class="font-medium capitalize">${dateFormatted}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-orange-600 dark:text-orange-500 font-bold">${count * glassSize} ml</span>
+                        <input type="number" min="0" value="${count}" onchange="updateHistoryWater('${dateKey}', this.value)" class="w-14 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 text-center rounded-lg py-1 text-sm">
+                        <span class="text-xs text-neutral-400">copos</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            }
+
+            openModal('modal-water-history');
+        }
+
+        function updateHistoryWater(dateKey, value) {
+            const count = Math.max(0, parseInt(value) || 0);
+            waterData[dateKey] = count;
+            renderWater();
+        }
+
+        // --- Lógica de Remédios ---
+        const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+        function renderMeds() {
+            const container = document.getElementById('meds-list');
+            const empty = document.getElementById('empty-meds');
+            container.innerHTML = '';
+
+            if (meds.length === 0) {
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+            } else {
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+
+                meds.forEach(med => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm space-y-3 cursor-pointer hover:border-orange-500/40 transition-colors';
+                    card.onclick = () => openEditMedModal(med.id);
+                    
+                    let daysHTML = '';
+                    for (let d = 0; d < 7; d++) {
+                        const isChecked = med.days && med.days[d];
+                        daysHTML += `
+                            <button onclick="event.stopPropagation(); toggleMedDay('${med.id}', ${d})" class="w-7 h-7 rounded-lg text-xs font-bold transition-colors ${isChecked ? 'bg-orange-600 text-white' : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400'}">
+                                ${weekDays[d]}
+                            </button>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-sm text-black dark:text-white">${med.name}</h3>
+                                ${med.time ? `<span class="text-xs text-neutral-400 flex items-center gap-1 mt-0.5"><i data-lucide="clock" class="w-3 h-3"></i> ${med.time}</span>` : ''}
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="event.stopPropagation(); openEditMedModal('${med.id}')" class="p-1.5 text-neutral-400 hover:text-orange-500 rounded-lg">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-1 border-t border-neutral-200/50 dark:border-neutral-800" onclick="event.stopPropagation()">
+                            <span class="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">Dias Tomados</span>
+                            <div class="flex gap-1">${daysHTML}</div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            localStorage.setItem('meds_data', JSON.stringify(meds));
+            lucide.createIcons();
+        }
+
+        function toggleMedDay(medId, dayIndex) {
+            meds = meds.map(m => {
+                if (m.id === medId) {
+                    const updatedDays = { ...m.days, [dayIndex]: !m.days[dayIndex] };
+                    return { ...m, days: updatedDays };
+                }
+                return m;
+            });
+            renderMeds();
+        }
+
+        function openAddMedsModal() {
+            editingMedId = null;
+            document.getElementById('med-form').reset();
+            setQuickTime('08:00');
+            document.getElementById('med-modal-title').textContent = 'Adicionar Lembrete';
+            document.getElementById('btn-delete-med').classList.add('hidden');
+            openModal('modal-med');
+        }
+
+        function openEditMedModal(id) {
+            const med = meds.find(m => m.id === id);
+            if (!med) return;
+
+            editingMedId = id;
+            document.getElementById('med-name').value = med.name || '';
+            if (med.time) {
+                setQuickTime(med.time);
+            } else {
+                setQuickTime('08:00');
+            }
+            document.getElementById('med-modal-title').textContent = 'Editar Lembrete';
+            document.getElementById('btn-delete-med').classList.remove('hidden');
+            openModal('modal-med');
+        }
+
+        function saveMed(event) {
+            event.preventDefault();
+            const name = document.getElementById('med-name').value.trim();
+            const hour = document.getElementById('med-hour').value;
+            const min = document.getElementById('med-minute').value;
+            const time = `${hour}:${min}`;
+
+            if (name) {
+                if (editingMedId) {
+                    meds = meds.map(m => m.id === editingMedId ? { ...m, name, time } : m);
+                } else {
+                    const newMed = {
+                        id: Date.now().toString(),
+                        name: name,
+                        time: time,
+                        days: { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }
+                    };
+                    meds.push(newMed);
+                }
+                renderMeds();
+                closeModal('modal-med');
+            }
+        }
+
+        function deleteCurrentEditingMed() {
+            if (editingMedId) {
+                deleteMed(editingMedId);
+                closeModal('modal-med');
+            }
+        }
+
+        function deleteMed(id) {
+            meds = meds.filter(m => m.id !== id);
+            renderMeds();
+        }
+
+        // --- Notificações ---
+        function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                showModalAlert('Não Suportado', 'Notificações diretas do navegador exigem que o site esteja hospedado em um endereço seguro (HTTPS) ou adicionado como PWA à tela inicial.');
+                return;
+            }
+
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                showModalAlert('Restrição do Celular', 'No celular, para receber notificações, os arquivos precisam estar hospedados em um site seguro (HTTPS) como o GitHub Pages ou Netlify.');
+                return;
+            }
+
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    showModalAlert('Sucesso!', 'Notificações ativadas com sucesso para este aplicativo.');
+                } else {
+                    showModalAlert('Atenção', 'A permissão para notificações foi bloqueada nas configurações do seu celular/navegador.');
+                }
+            }).catch(() => {
+                showModalAlert('Aviso', 'Não foi possível solicitar permissão para notificações neste ambiente.');
+            });
+        }
+
+        function showModalAlert(title, message) {
+            alert(`${title}\n\n${message}`);
+        }
+
+        function startNotificationChecker() {
+            setInterval(() => {
+                const now = new Date();
+                const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                
+                meds.forEach(med => {
+                    if (med.time === currentTime && now.getSeconds() === 0) {
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            new Notification('Hora do Remédio!', {
+                                body: `Está na hora de tomar: ${med.name}`,
+                                icon: 'https://cdn-icons-png.flaticon.com/512/2387/2387679.png'
+                            });
+                        }
+                    }
+                });
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
